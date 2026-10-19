@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Lukas Habla</title>
+<meta name="description" content="Bilingual talker for Lukas: tap a picture, hear it in Spanish and English.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Lukas Habla">
+<meta name="theme-color" content="#BFE7FF">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <!-- Always-on urgent row -->
+  <section class="urgent" id="urgent" aria-label="Urgente"></section>
+
+  <!-- Message strip: home button, the words he tapped, say-it-all, clear -->
+  <section class="strip">
+    <button class="home-btn" id="homeBtn" aria-label="Inicio">
+      <span class="home-ico">🏠</span>
+      <span class="home-txt"><b id="boardEs">Inicio</b><i id="boardEn">Home</i></span>
+    </button>
+    <div class="chips" id="chips"></div>
+    <button class="strip-btn play" id="playBtn" aria-label="Decir todo / Say it all">▶</button>
+    <button class="strip-btn clear" id="clearBtn" aria-label="Borrar / Clear">✕</button>
+    <button class="lock" id="lockBtn" aria-label="Adultos: mantén presionado / Grown-ups: press and hold">
+      <svg viewBox="0 0 36 36" class="ring"><circle cx="18" cy="18" r="15" /></svg>
+      <span>⚙︎</span>
+    </button>
+  </section>
+
+  <!-- 6 x 3 word grid -->
+  <main class="grid" id="grid" aria-live="off"></main>
+
+  <div class="edit-banner" id="editBanner" hidden>
+    <span>✏️ Modo editar · Tap a button to change its words or photo</span>
+    <button id="editDone">Listo / Done</button>
+  </div>
+</div>
+
+<!-- Grown-up panel -->
+<dialog id="panel">
+  <form method="dialog" class="panel">
+    <header>
+      <h2>Para adultos <small>Grown-ups</small></h2>
+      <button value="close" class="x" aria-label="Cerrar">✕</button>
+    </header>
+
+    <div class="tabs" role="tablist">
+      <button type="button" data-tab="voz" class="on">Voz / Voice</button>
+      <button type="button" data-tab="botones">Botones / Buttons</button>
+      <button type="button" data-tab="uso">Uso / Usage</button>
+      <button type="button" data-tab="copia">Copia / Backup</button>
+    </div>
+
+    <section data-pane="voz">
+      <label>Orden de idiomas / Language order
+        <select id="sOrder">
+          <option value="es-en">Español → English</option>
+          <option value="en-es">English → Español</option>
+          <option value="es">Solo español</option>
+          <option value="en">English only</option>
+        </select>
+      </label>
+      <label>Velocidad / Speed <output id="sRateOut"></output>
+        <input type="range" id="sRate" min="0.5" max="1.2" step="0.05">
+      </label>
+      <label>Voz en español / Spanish voice <select id="sVoiceEs"></select></label>
+      <label>English voice <select id="sVoiceEn"></select></label>
+      <label>Espera entre toques / Wait between taps
+        <select id="sGuard">
+          <option value="0">Ninguna / None</option>
+          <option value="400">Corta / Short</option>
+          <option value="900">Media / Medium</option>
+          <option value="1600">Larga / Long</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="sShowEn"> Mostrar inglés en botones / Show English on buttons</label>
+      <label class="check"><input type="checkbox" id="sChime"> Campanita en botones urgentes / Chime on urgent buttons</label>
+      <button type="button" class="big" id="testVoice">🔊 Probar / Test</button>
+    </section>
+
+    <section data-pane="botones" hidden>
+      <p>Cambia palabras, emojis o pon fotos de la familia. Los botones no se mueven de lugar. Ocultar deja el espacio vacío.</p>
+      <p class="en">Change words or emoji, or add family photos. Buttons never move. Hiding one leaves its spot empty so Lukas's muscle memory stays the same.</p>
+      <button type="button" class="big" id="startEdit">✏️ Editar botones / Edit buttons</button>
+    </section>
+
+    <section data-pane="uso" hidden>
+      <div class="stats" id="stats"></div>
+      <button type="button" class="ghost" id="clearLog">Borrar historial / Clear history</button>
+    </section>
+
+    <section data-pane="copia" hidden>
+      <p>Guarda una copia (fotos y cambios) por si se borra el iPad.</p>
+      <p class="en">Save a backup of photos and changes in case the iPad is reset.</p>
+      <button type="button" class="big" id="exportBtn">💾 Guardar copia / Save backup</button>
+      <label class="big file">📂 Cargar copia / Load backup<input type="file" id="importFile" accept="application/json,.json"></label>
+      <button type="button" class="ghost danger" id="resetAll">Volver a lo original / Reset everything</button>
+    </section>
+  </form>
+</dialog>
+
+<!-- Button editor -->
+<dialog id="editor">
+  <form method="dialog" class="panel">
+    <header>
+      <h2>Editar botón <small id="edId"></small></h2>
+      <button value="cancel" class="x" aria-label="Cerrar">✕</button>
+    </header>
+    <div class="ed-preview" id="edPreview"></div>
+    <div class="ed-photo">
+      <label class="big file">📷 Foto<input type="file" id="edPhoto" accept="image/*"></label>
+      <button type="button" class="ghost" id="edNoPhoto">Quitar foto / Remove photo</button>
+    </div>
+    <div class="two">
+      <label>Español <input id="edEs"></label>
+      <label>English <input id="edEn"></label>
+      <label>Dice / Says (es) <input id="edSayEs" placeholder="igual / same"></label>
+      <label>Says (en) <input id="edSayEn" placeholder="same"></label>
+      <label>Emoji <input id="edIcon" maxlength="16"></label>
+      <label class="check"><input type="checkbox" id="edHidden"> Ocultar / Hide</label>
+    </div>
+    <footer>
+      <button type="button" class="ghost" id="edReset">Original</button>
+      <button type="button" class="ghost" id="edOpen" hidden>📂 Abrir / Open</button>
+      <button value="save" class="big" id="edSave">Guardar / Save</button>
+    </footer>
+  </form>
+</dialog>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
